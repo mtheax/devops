@@ -17,7 +17,7 @@
 ## Структура
 
 ```
-students/yourname/
+students/maxdemir/
 ├── src/                        # код застосунку (index.js, package.json)
 ├── .github/workflows/          # воркфлов GitHub Actions (копія, див. примітку)
 ├── infra/                      # Terraform: main.tf, variables.tf, outputs.tf, user_data.sh
@@ -30,8 +30,8 @@ students/yourname/
 ```
 
 > **Примітка.** GitHub Actions запускає лише воркфлови з кореня репозиторію,
-> тому активний файл лежить у `.github/workflows/yourname-deploy.yml` (корінь),
-> а копія в `students/yourname/.github/workflows/` збережена за структурою завдання.
+> тому активний файл лежить у `.github/workflows/maxdemir-deploy.yml` (корінь),
+> а копія в `students/maxdemir/.github/workflows/` збережена за структурою завдання.
 > Файли ідентичні; зміни вносьте в обидва.
 
 ## Локальний запуск
@@ -39,7 +39,7 @@ students/yourname/
 Потрібні Docker та Docker Compose.
 
 ```bash
-cd students/yourname
+cd students/maxdemir
 cp .env.example .env            # за потреби змініть значення
 docker compose up --build
 ```
@@ -137,7 +137,7 @@ curl http://<public_ip>/db
 Щоб не платити за ресурси AWS:
 
 ```bash
-cd students/yourname/infra
+cd students/maxdemir/infra
 terraform init
 terraform destroy
 ```
