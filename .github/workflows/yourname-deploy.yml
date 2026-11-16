@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - "students/yourname/**"
-      - ".github/workflows/yourname-deploy.yml"
+      - "students/maxdemir/**"
+      - ".github/workflows/maxdemir-deploy.yml"
   pull_request:
     branches: [main]
     paths:
-      - "students/yourname/**"
+      - "students/maxdemir/**"
 
 concurrency:
   group: deploy-${{ github.ref }}
