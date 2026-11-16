@@ -1,4 +1,4 @@
-# nodeapp: Node.js + PostgreSQL у Docker з CI/CD та Terraform
+# devops: Node.js + PostgreSQL у Docker з CI/CD та Terraform
 
 ## Призначення
 
@@ -64,7 +64,7 @@ curl http://localhost:3000/db
 | `POSTGRES_USER`     | `app`            | Користувач БД                                         |
 | `POSTGRES_PASSWORD` | `app`            | Пароль БД (на EC2 береться з GitHub Secret)           |
 | `POSTGRES_DB`       | `app`            | Назва БД                                              |
-| `DOCKER_USERNAME`   | `local`          | Префікс образу `<user>/nodeapp` (для pull на сервері) |
+| `DOCKER_USERNAME`   | `local`          | Префікс образу `<user>/devops` (для pull на сервері) |
 
 Файл `.env` не комітиться (див. `.gitignore`). На EC2 його створює пайплайн.
 
@@ -94,14 +94,14 @@ flowchart LR
 
 ### Одноразова підготовка
 
-1. У AWS (EC2 → Key Pairs) має існувати key pair `nodeapp` у регіоні `eu-north-1`
+1. У AWS (EC2 → Key Pairs) має існувати key pair `devops` у регіоні `eu-north-1`
    (назва задається змінною `key_name` у `infra/variables.tf`).
 2. Створіть S3-бакет для Terraform state та впишіть його назву в `infra/main.tf`
    (`backend "s3"`). Регіон у `main.tf`, `variables.tf` і `AWS_DEFAULT_REGION` у workflow має збігатися.
 3. Створіть токен у Docker Hub (Account settings → Personal access tokens, права Read & Write).
 4. Закодуйте приватний ключ у base64 (один рядок):
-   - Linux / Git Bash: `base64 -w0 nodeapp.pem`
-   - PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("nodeapp.pem"))`
+   - Linux / Git Bash: `base64 -w0 devops.pem`
+   - PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("devops.pem"))`
 5. Додайте секрети: **Settings → Secrets and variables → Actions**.
 
 ### GitHub Secrets
@@ -112,7 +112,7 @@ flowchart LR
 | `DOCKER_TOKEN`          | Access token Docker Hub                                  |
 | `AWS_ACCESS_KEY_ID`     | Ключ доступу AWS                                         |
 | `AWS_SECRET_ACCESS_KEY` | Секретний ключ AWS                                       |
-| `EC2_SSH_KEY_B64`       | Приватний ключ `nodeapp.pem` у base64                    |
+| `EC2_SSH_KEY_B64`       | Приватний ключ `devops.pem` у base64                    |
 | `POSTGRES_PASSWORD`     | Пароль БД (літери й цифри, без спецсимволів в URL)       |
 
 ### Запуск деплою
