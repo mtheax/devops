@@ -1,4 +1,4 @@
-name: CI/CD (yourname)
+name: CI/CD (maxdemir)
 
 on:
   push:
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  APP_DIR: students/yourname
+  APP_DIR: students/maxdemir
   IMAGE: ${{ secrets.DOCKER_USERNAME }}/nodeapp
   AWS_DEFAULT_REGION: eu-north-1
 
