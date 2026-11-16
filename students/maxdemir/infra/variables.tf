@@ -5,7 +5,7 @@ variable "region" {
 
 variable "name" {
   type    = string
-  default = "nodeapp"
+  default = "devops"
 }
 
 variable "instance_type" {
@@ -15,6 +15,6 @@ variable "instance_type" {
 
 variable "key_name" {
   type        = string
-  default     = "nodeapp"
+  default     = "devops"
   description = "Назва наявної AWS key pair (має існувати в цьому регіоні)"
 }
