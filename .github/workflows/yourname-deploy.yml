@@ -1,0 +1,134 @@
+name: CI/CD (yourname)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "students/yourname/**"
+      - ".github/workflows/yourname-deploy.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "students/yourname/**"
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  APP_DIR: students/yourname
+  IMAGE: ${{ secrets.DOCKER_USERNAME }}/nodeapp
+  AWS_DEFAULT_REGION: eu-north-1
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        if: github.event_name == 'push'
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.APP_DIR }}
+          file: ${{ env.APP_DIR }}/Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  terraform:
+    if: github.event_name == 'push'
+    needs: build-push
+    runs-on: ubuntu-latest
+    outputs:
+      ip: ${{ steps.out.outputs.ip }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    defaults:
+      run:
+        working-directory: ${{ env.APP_DIR }}/infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - run: terraform init
+      - run: terraform validate
+      - run: terraform apply -auto-approve
+
+      - id: out
+        run: echo "ip=$(terraform output -raw public_ip)" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: terraform
+    runs-on: ubuntu-latest
+    env:
+      HOST: ${{ needs.terraform.outputs.ip }}
+      REMOTE: ubuntu
+      SSH_OPTS: -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i key.pem
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY_B64 }}" | base64 -d > key.pem
+          chmod 600 key.pem
+
+      - name: Wait for Docker on EC2
+        run: |
+          for i in {1..40}; do
+            if ssh $SSH_OPTS $REMOTE@$HOST "sudo docker compose version && sudo docker info" >/dev/null 2>&1; then
+              echo "Docker is ready"; exit 0
+            fi
+            echo "Waiting ($i/40)..."; sleep 10
+          done
+          echo "Docker did not become ready"; exit 1
+
+      - name: Copy compose file and write .env
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          ssh $SSH_OPTS $REMOTE@$HOST "mkdir -p ~/nodeapp"
+          scp $SSH_OPTS $APP_DIR/docker-compose.yml $REMOTE@$HOST:~/nodeapp/docker-compose.yml
+          ssh $SSH_OPTS $REMOTE@$HOST "cat > ~/nodeapp/.env && chmod 600 ~/nodeapp/.env" <<EOF
+          DOCKER_USERNAME=$DOCKER_USERNAME
+          POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+          POSTGRES_USER=app
+          POSTGRES_DB=app
+          APP_PORT=80
+          EOF
+
+      - name: Deploy with docker compose
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+        run: |
+          ssh $SSH_OPTS $REMOTE@$HOST "
+            cd ~/nodeapp &&
+            echo '$DOCKER_TOKEN' | sudo docker login -u '$DOCKER_USERNAME' --password-stdin &&
+            sudo docker compose pull app &&
+            sudo docker compose up -d &&
+            sudo docker image prune -f
+          "
+
+      - name: Smoke test
+        run: |
+          for i in {1..12}; do
+            curl -fsS --max-time 5 http://$HOST/health && exit 0
+            sleep 5
+          done
+          exit 1

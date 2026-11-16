@@ -1,0 +1,23 @@
+# Залежності
+node_modules/
+
+# Секрети
+.env
+*.pem
+*.key
+id_rsa*
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+.terraform.tfstate.lock.info
+
+# Системні/тимчасові
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
